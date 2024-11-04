@@ -1,0 +1,19 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+
+interface Props extends HTMLAttributes<'button'> {
+}
+
+let props = Astro.props;
+---
+
+<button class={"mt-3 py-2 px-5 rounded-lg shadow-2xl active:scale-75 transition-all outline-none " + props.class}  type={props.type || "button"} {...props}>
+    <slot/>
+</button>
+
+<style>
+    button[disabled] {
+        opacity: 0.75;
+        pointer-events: none;
+    }
+</style>

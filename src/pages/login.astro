@@ -1,0 +1,25 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Login">
+    <div class="flex flex-col">
+        <input type="text" placeholder="Username" />
+        <input type="password" placeholder="Password" />
+        <button>SignUP</button>
+    </div>
+
+    <script>
+        import {createClient} from "@supabase/supabase-js"
+        import Crypto from "crypto-js"
+        
+        const client = createClient(
+            import.meta.env.PUBLIC_SUPABASE_URL,
+            import.meta.env.PUBLIC_SUPABASE_KEY
+        )
+
+        var crypt = Crypto.AES.encrypt("Skibidi", "Toilet");
+        var c = Crypto.AES.decrypt(crypt, "Toilet");
+        console.log(c.toString(Crypto.enc.Utf8))
+    </script>
+</Layout>

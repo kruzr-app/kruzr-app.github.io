@@ -1,0 +1,187 @@
+---
+import Layout from "../layouts/Layout.astro"
+import Input from "../components/Input.astro"
+import Button from "../components/Button.astro"
+import "leaflet/dist/leaflet.css"
+
+---
+
+<Layout title="Car Pooling">
+	<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" defer></script>
+    <div  class="mx-auto rounded shadow-lg h-fit grid gap-2 px-5 py-3 max-md:w-[87vw] w-[67vw] place-items-center bg-purple-600 text-white" >
+    <form class="w-full h-full grid gap-2 place-items-center" action="#" id="myform">
+
+        <h1 class="text-3xl font-bold mb-3">Car Pooling</h1>
+        <Input autofocus label="Name" name="name" pattern="^[a-zA-Z]+(?:\\s[a-zA-Z]+)+$" title="Please enter at least first and the last names (middle name is optional)" required></Input>
+        <Input label="Phone Number" name="phone" type="tel" pattern="^\\d{10}$" title="Your Phone Number Must Be Of 10 digits" required></Input>
+        <div class="flex max-lg:flex-col gap-3">
+            <Input label="Latitude" name="lat" type="number" required></Input>
+            <Input label="Longitude" name="lng" type="number" required></Input>
+        </div>
+        <Button id="cloc" class="bg-amber-400 hocus:bg-amber-500">Pick Current Location</Button>   
+        <div class="cf-turnstile" data-sitekey="0x4AAAAAAAw4Iz2NBr7kGb1A" data-theme="light" data-callback="call"></div>
+        <div class="flex gap-5">
+            <Button type="submit" id="join-btn" class="bg-emerald-600 hocus:bg-emerald-700 ld-ext-right">
+                Search
+                <img
+                src="/roll.svg"
+                class="ld bg-transparent"
+              >
+            </Button>
+            <Button type="submit" id="host-btn" class="bg-rose-600 hocus:bg-rose-700 ld-ext-right">
+                Host
+                <img
+                src="/roll.svg"
+                class="ld bg-transparent"
+              >
+            </Button>
+        </div>
+        
+    </form>
+</div>
+    <script>
+        import PocketBase from 'pocketbase'
+        import L from "leaflet"
+
+        const client = new PocketBase('https://travel-1.pockethost.io');
+        var f = document.querySelector("#myform") as HTMLFormElement
+        var cloc = document.querySelector("#cloc") as HTMLButtonElement
+        var latinput = document.querySelector("input[name='lat']") as HTMLInputElement
+        var lnginput = document.querySelector("input[name='lng']") as HTMLInputElement
+        var hostBtn = document.getElementById("host-btn") as HTMLButtonElement;
+        var joinBtn = document.getElementById("join-btn") as HTMLButtonElement;
+        var state: "start" | "join" | "host" = "start";
+        var loc: {lat: number, lng: number} = {lat: 0, lng: 0};
+
+        var getFormValidity = async () => {
+            f.checkValidity();
+             const response = await client.send('/test', {
+                    method: 'POST',
+                    body: new FormData(f)
+            })
+
+            return response.success == true
+        };
+
+        cloc.addEventListener("click", (e) => {
+            navigator.geolocation.getCurrentPosition((position) => {
+                var lat = position.coords.latitude;
+                var lng = position.coords.longitude;
+                latinput.value = lat.toString();
+                lnginput.value = lng.toString();
+            })
+        })
+
+
+
+        f.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            let submitterId = e.submitter?.id as string;
+
+            switch(submitterId) {
+                default: 
+                case("join-btn"): {
+                    joinBtn.classList.add("running")
+                    state = "join";
+                    break;
+                }
+
+                case("host-btn"): {
+                    hostBtn.classList.add("running")
+                    state = "host";
+                    alert("Double-Click On The Map To Choose Destination")
+                    break;
+                }
+                
+            }
+
+            hostBtn.disabled = true;
+            joinBtn.disabled = true;
+
+            let validity = await getFormValidity()
+            if(!validity) {        
+                hostBtn.disabled = false;
+                joinBtn.disabled = false;
+                hostBtn.classList.remove("running")
+                joinBtn.classList.remove("running")
+                alert("Form is not valid");
+                f.reset();
+                return;
+            }
+
+            
+            const d = new FormData(f);
+            let lat = parseFloat(d.get("lat") as string)
+            let lng = parseFloat(d.get("lng") as string)
+            let par = document.body;
+            f.parentElement?.remove();
+            let map = document.createElement("div")
+            map.classList.add("map")
+
+            map.style.cssText = `
+            height: 90vh;
+            position: absolute;
+            top: 10vh;
+            width: 100vw;
+            `
+
+            par.appendChild(map)
+            const mapObj = L.map(map).setView([lat, lng], 13)
+            let congestedAreas: {
+                lat: number,
+                lng: number,
+            }[];
+
+            if(state == "host") {
+                mapObj.on('dblclick', async (e) => {
+                    await client.collection("car_pooling_options").create({
+                        name: d.get("name"),
+                        init_latitude: lat,
+                        init_longitude: lng,
+                        dest_latitude: e.latlng.lat,
+                        dest_longitude: e.latlng.lng,
+                        phone_number: d.get("phone")
+                    })
+                })
+            }else if(state == "join") {
+                await client.collection("car_pooling_options").subscribe("*", (e) => {
+                    L.marker([e.record.dest_latitude, e.record.dest_longitude]).addTo(mapObj)
+                    .bindPopup(`${e.record.name} will go here, his phone number: ${e.record["phone_number"]}`)
+                    .openPopup();
+                })
+            }
+
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(mapObj);
+            
+       
+        })
+        
+        
+    </script>
+</Layout>
+
+<style>
+    .ld {
+        width:1em;height:1em;background:transparent;
+    }
+    label {
+        color: white;
+    }
+    input {
+        color: white;
+    }
+    @keyframes shake {
+    0% { transform: translate(0); }
+    25% { transform: translate(-5px, 0); }
+    50% { transform: translate(5px, 0); }
+    75% { transform: translate(-5px, 0); }
+    100% { transform: translate(0); }
+}
+
+.shake {
+    animation: shake 1s ease infinite; /* Change 'infinite' to '1' if you want it to shake only once */
+}
+
+</style>

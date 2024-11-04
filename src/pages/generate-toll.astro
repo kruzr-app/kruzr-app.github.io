@@ -1,0 +1,154 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Button from "../components/Button.astro";
+import "leaflet/dist/leaflet.css"
+---
+
+<Layout title="Generate Toll">
+    <!-- Permission Box -->
+    <div id="pbox" class="w-2/3 mx-auto mt-8 text-center grid place-items-center bg-cyan-500 p-14 rounded-2xl">
+        <h1>Please permit us to access your location to predict the toll price near you</h1>
+        <Button id="req-btn" class="bg-red-400 hocus:bg-red-500">Request Permission</Button>
+    </div>
+
+    <script>
+        const reqBtn = document.querySelector("#req-btn") as HTMLElement;
+        
+        reqBtn.addEventListener("click", (e) => {
+            navigator.geolocation.getCurrentPosition((position) => {
+                const event = new CustomEvent("LocationAcquired", {
+                    detail: {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    }
+                })
+
+                if(!reqBtn.parentElement) return;
+                reqBtn.parentElement.remove()
+                document.dispatchEvent(event);
+            }, (error) => {
+                switch(error.code) {
+                    case (error.PERMISSION_DENIED): {
+                        alert("Permission Denied For Accessing The Location")
+                        break;
+                    }
+
+                    case (error.POSITION_UNAVAILABLE): {
+                        alert("Position Information Is Unavailable")
+                        break;
+                    }
+
+                    case (error.TIMEOUT): {
+                        alert("Request Timeout")
+                        break;
+                    }
+
+                    default: {
+                        alert("Something Went Wrong")
+                        break;
+                    }
+                }
+            })
+        })
+    </script>
+
+
+    <script>
+        import L from "leaflet"
+        import random from 'random'
+        const tdiv = document.querySelector("#tdiv") as HTMLElement
+        interface CustomEventWithDetail<T> extends Event {
+            detail: T; // Define the detail property with a generic type
+        }
+
+        //@ts-ignore
+        document.addEventListener("LocationAcquired", (e: CustomEvent<{
+            lat: number;
+            lng: number;
+        }>) => {
+            const map = document.createElement("div")
+            map.id = "map"
+            map.classList.add("map")
+            map.style.cssText = `
+            height: 90vh;
+            position: absolute;
+            top: 10vh;
+            width: 100vw;
+            `
+            document.body.appendChild(map)
+            const {lat, lng} = e.detail;
+                        
+            const mapObj = L.map(map).setView([lat, lng], 13)
+            let congestedAreas: {
+                lat: number,
+                lng: number,
+
+            }[];
+
+            map.style.display = 'block'
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(mapObj);
+            
+            L.marker([lat, lng]).addTo(mapObj)
+            .bindPopup('Your Location')
+            .openPopup();
+            
+            var n = random.int(4, 30)
+
+            tdiv.style.background = "rgba(0, 0, 0, 0.5)"
+            tdiv.innerText = `${n} Congested Spots Near You`
+            tdiv.style.display = 'block'
+            const colorCodes = {
+                lowCongestion: ["blue", "cyan"],
+                midCongestion: ["yellow", "#ff0"],
+                highCongestion: ["red", "#f03"]
+            } as const
+            while(n >= 0) {
+                var r1 = random.float(0, 0.25 - (0.0125)*random.int(5,10)) * (random.bool() ? -1 : 1)
+                var r2 = random.float(0, 0.25 - (0.0125)*random.int(5,10)) * (random.bool() ? -1 : 1)
+                var tollPrice = random.int(20, 50)
+                let fillColor, color;
+                if(tollPrice < 35) {
+                    color = colorCodes.lowCongestion[0]
+                    fillColor = colorCodes.lowCongestion[1]
+                } else if(tollPrice <= 40) {
+                    color = colorCodes.midCongestion[0]
+                    fillColor = colorCodes.midCongestion[1]
+                } else if(tollPrice > 40) {
+                    color = colorCodes.highCongestion[0]
+                    fillColor = colorCodes.highCongestion[1]                   
+                }
+
+                let randtimehour = random.int(6, 10)
+                let randtimemin = random.int(0, 60)
+                let randtime = `${randtimehour}:${randtimemin < 10 ? "0" : ""}${randtimemin} PM`
+
+                L.circle([lat+r1, lng+r2], {
+                    color,
+                    fillColor,
+                    fillOpacity: 0.5,
+                    radius: 500
+                }).addTo(mapObj).bindPopup(`Toll Price: ${tollPrice}, \n At: ${randtime}`)
+
+                n-=1;
+            }
+
+        })
+    </script>
+
+    <div id="tdiv" class="w-screen top-[10vh] pointer-events-none text-white py-3 hidden absolute z-[99999] text-center bg-black bg-opacity-0 transition-all  mx-auto">
+        
+    </div>
+
+    <script>
+   
+    </script>
+</Layout>
+
+<style>
+    #pbox {
+        clip-path: polygon(0% 15%, 15% 15%, 15% 0%, 85% 0%, 85% 15%, 100% 15%, 100% 85%, 85% 85%, 85% 100%, 15% 100%, 15% 85%, 0% 85%);
+    }
+
+</style>

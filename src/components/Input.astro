@@ -1,0 +1,80 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import Nav from '../components/ Nav.astro';
+
+type HTMLInputTypeAttribute =
+		| 'button'
+		| 'checkbox'
+		| 'color'
+		| 'date'
+		| 'datetime-local'
+		| 'email'
+		| 'file'
+		| 'hidden'
+		| 'image'
+		| 'month'
+		| 'number'
+		| 'password'
+		| 'radio'
+		| 'range'
+		| 'reset'
+		| 'search'
+		| 'submit'
+		| 'tel'
+		| 'text'
+		| 'time'
+		| 'url'
+		| 'week';
+
+
+interface Props extends HTMLAttributes<'input'> {
+	label: string;
+}
+
+const { name, type = "text", label} = Astro.props;
+let inputmode:'none'
+			| 'text'
+			| 'tel'
+			| 'url'
+			| 'email'
+			| 'numeric'
+			| 'decimal'
+			| 'search';
+switch(type) {
+	case "number": {
+		inputmode = "numeric"
+		break;
+	}
+	case "tel": {
+		inputmode = "tel"
+		break;
+	}
+	case "email": {
+		inputmode = "email"
+		break;
+	}	
+	default: {
+		inputmode = "text";
+		break;
+	}
+};
+---
+<label class="flex flex-col" for={name}>
+	{label}
+	<input {...Astro.props} type={type} step="any" inputmode={inputmode} {name} class={"bg-black bg-opacity-50 p-2 rounded shadow-2xl  transition-all outline-none focus:bg-opacity-75 text-white! focus:border-cyan-400 focus:border-2 border-2 valid:border-green-400 invalid:border-rose-700 "+ Astro.props.class}>
+</label>
+
+<style>
+	input[type=number] {
+		-moz-appearance: textfield;
+	}
+
+	input[type=number]::-webkit-inner-spin-button {
+		transition: all 500ms ease;
+		background: rgba(0, 0, 0, 0.5);
+		opacity: 0;
+	}
+	input[type=number]:focus::-webkit-inner-spin-button {
+		opacity: 1;
+	}
+</style>

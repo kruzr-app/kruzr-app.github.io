@@ -1,0 +1,21 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Card from '../components/Card.astro';
+import "leaflet/dist/leaflet.css"
+---
+
+<Layout title="Welcome to Astro.">
+	<a href="/generate-toll">click!</a>
+
+	<script>
+		var javascriptCallback = (a:any) => {
+			console.log(a)
+		}
+	</script>
+</Layout>
+
+<style>
+	#map {
+		height: 400px;
+	}
+</style>
